@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from app import __version__
 from app.database import Base, engine
-from app.routers import exercises, health, workouts
+from app.routers import auth, exercises, health, workouts
 
 
 async def create_tables() -> None:
@@ -29,5 +29,6 @@ async def on_startup() -> None:
 
 
 app.include_router(health.router)
+app.include_router(auth.router)
 app.include_router(workouts.router)
 app.include_router(exercises.router)
