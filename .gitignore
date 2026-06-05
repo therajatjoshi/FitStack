@@ -221,4 +221,6 @@ __marimo__/
 infra/.terraform/
 infra/*.tfstate
 infra/*.tfstate.*
-infra/terraform.tfvars
+*.tfvars
+!*.tfvars.example
+infra/tfplan

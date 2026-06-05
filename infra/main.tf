@@ -65,3 +65,40 @@ resource "azurerm_linux_web_app" "main" {
     WEBSITES_PORT                              = "8000"
   }
 }
+
+resource "azurerm_postgresql_flexible_server" "main" {
+  name                   = "${var.project_name}-pg-${random_string.suffix.result}"
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  version                = "16"
+  administrator_login    = var.admin_username
+  administrator_password = var.admin_password
+  sku_name               = "B_Standard_B1ms"
+  storage_mb             = 32768
+  backup_retention_days  = 7
+
+  authentication {
+    password_auth_enabled = true
+  }
+}
+
+resource "azurerm_postgresql_flexible_server_database" "main" {
+  name      = var.postgres_database_name
+  server_id = azurerm_postgresql_flexible_server.main.id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+}
+
+resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
+  name             = "AllowAzureServices"
+  server_id        = azurerm_postgresql_flexible_server.main.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+resource "azurerm_postgresql_flexible_server_firewall_rule" "developer" {
+  name             = "AllowDeveloperIp"
+  server_id        = azurerm_postgresql_flexible_server.main.id
+  start_ip_address = var.developer_ip
+  end_ip_address   = var.developer_ip
+}

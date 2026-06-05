@@ -21,3 +21,26 @@ variable "docker_image_name" {
   type        = string
   default     = "fitstack-backend:latest"
 }
+
+variable "admin_username" {
+  description = "PostgreSQL Flexible Server administrator login"
+  type        = string
+  default     = "fitstackadmin"
+}
+
+variable "admin_password" {
+  description = "PostgreSQL Flexible Server administrator password"
+  type        = string
+  sensitive   = true
+}
+
+variable "developer_ip" {
+  description = "Your public IP address for PostgreSQL dev access (e.g. from https://api.ipify.org)"
+  type        = string
+}
+
+variable "postgres_database_name" {
+  description = "Name of the PostgreSQL database"
+  type        = string
+  default     = "fitstack_db"
+}
