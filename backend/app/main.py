@@ -4,8 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.constants import CONSENT_TEXT, CONSENT_VERSION
 from app.database import Base, engine
-from app.routers import ai, auth, exercises, health, workouts
+from app.routers import ai, auth, exercises, health, profile, workouts
 
 
 async def create_tables() -> None:
@@ -42,8 +43,14 @@ async def on_startup() -> None:
     await create_tables()
 
 
+@app.get("/consent-text", tags=["consent"])
+async def get_consent_text() -> dict[str, str]:
+    return {"version": CONSENT_VERSION, "text": CONSENT_TEXT}
+
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(workouts.router)
 app.include_router(exercises.router)
 app.include_router(ai.router)
+app.include_router(profile.router)
