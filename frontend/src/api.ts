@@ -70,6 +70,27 @@ export interface WorkoutLog {
   logged_at: string;
 }
 
+export interface GeneratedExercise {
+  name: string;
+  sets: number;
+  reps: number;
+  weight_kg: number;
+  notes: string;
+}
+
+export interface GeneratedWorkout {
+  workout_name: string;
+  workout_type: string;
+  exercises: GeneratedExercise[];
+}
+
+export interface ExerciseCreatePayload {
+  name: string;
+  muscle_group: string;
+  equipment: string;
+  difficulty: string;
+}
+
 export async function register(
   email: string,
   password: string,
@@ -109,6 +130,22 @@ export async function createWorkout(
 
 export async function getExercises(): Promise<Exercise[]> {
   const { data } = await api.get<Exercise[]>("/exercises");
+  return data;
+}
+
+export async function createExercise(
+  payload: ExerciseCreatePayload,
+): Promise<Exercise> {
+  const { data } = await api.post<Exercise>("/exercises", payload);
+  return data;
+}
+
+export async function generateWorkout(
+  prompt?: string,
+): Promise<GeneratedWorkout> {
+  const { data } = await api.post<GeneratedWorkout>("/ai/generate-workout", {
+    prompt,
+  });
   return data;
 }
 
