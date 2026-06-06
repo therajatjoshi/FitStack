@@ -82,6 +82,94 @@ export interface GeneratedWorkout {
   workout_name: string;
   workout_type: string;
   exercises: GeneratedExercise[];
+  consult_recommended: boolean;
+  disclaimer: string;
+}
+
+export interface MedicalFlags {
+  heart_condition: boolean;
+  diabetes: boolean;
+  asthma: boolean;
+  joint_or_back_issues: boolean;
+  pregnant: boolean;
+  other: boolean;
+  other_notes: string | null;
+  none: boolean;
+  updated_at: string;
+}
+
+export interface FullProfile {
+  id: string;
+  email: string;
+  name: string;
+  sex: string | null;
+  date_of_birth: string | null;
+  consent_accepted_at: string | null;
+  consent_version: string | null;
+  height_cm: number | null;
+  primary_goal: string | null;
+  secondary_constraint: string | null;
+  experience_level: string | null;
+  lift_competency: Record<string, string> | null;
+  activity_level: string | null;
+  training_days_per_week: number | null;
+  equipment: string | null;
+  injuries_notes: string | null;
+  goal_targets: Record<string, unknown> | null;
+  goal_timeline_weeks: number | null;
+  latest_weight_kg: number | null;
+  latest_body_fat_pct: number | null;
+  latest_waist_cm: number | null;
+  latest_hip_cm: number | null;
+  medical_flags: MedicalFlags | null;
+  profile_completeness: number;
+}
+
+export interface BodyMetricsEntry {
+  id: string;
+  user_id: string;
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  waist_cm: number | null;
+  hip_cm: number | null;
+  recorded_at: string;
+}
+
+export interface ConsentText {
+  version: string;
+  text: string;
+}
+
+export interface ProfileUpdatePayload {
+  height_cm?: number | null;
+  primary_goal?: string | null;
+  secondary_constraint?: string | null;
+  experience_level?: string | null;
+  lift_competency?: Record<string, string> | null;
+  activity_level?: string | null;
+  training_days_per_week?: number | null;
+  equipment?: string | null;
+  injuries_notes?: string | null;
+  goal_targets?: Record<string, unknown> | null;
+  goal_timeline_weeks?: number | null;
+}
+
+export interface MedicalFlagsPayload {
+  heart_condition: boolean;
+  diabetes: boolean;
+  asthma: boolean;
+  joint_or_back_issues: boolean;
+  pregnant: boolean;
+  other: boolean;
+  other_notes: string | null;
+  none: boolean;
+}
+
+export interface BodyMetricsPayload {
+  weight_kg?: number | null;
+  body_fat_pct?: number | null;
+  waist_cm?: number | null;
+  hip_cm?: number | null;
 }
 
 export interface ExerciseCreatePayload {
@@ -146,6 +234,47 @@ export async function generateWorkout(
   const { data } = await api.post<GeneratedWorkout>("/ai/generate-workout", {
     prompt,
   });
+  return data;
+}
+
+export async function getConsentText(): Promise<ConsentText> {
+  const { data } = await api.get<ConsentText>("/consent-text");
+  return data;
+}
+
+export async function getProfile(): Promise<FullProfile> {
+  const { data } = await api.get<FullProfile>("/profile/me");
+  return data;
+}
+
+export async function updateProfile(
+  payload: Partial<ProfileUpdatePayload>,
+): Promise<unknown> {
+  const { data } = await api.put("/profile/me", payload);
+  return data;
+}
+
+export async function updateMedicalFlags(
+  payload: MedicalFlagsPayload,
+): Promise<unknown> {
+  const { data } = await api.put("/profile/me/medical", payload);
+  return data;
+}
+
+export async function postConsent(consent_version: string): Promise<unknown> {
+  const { data } = await api.post("/profile/me/consent", { consent_version });
+  return data;
+}
+
+export async function addBodyMetrics(
+  payload: BodyMetricsPayload,
+): Promise<BodyMetricsEntry> {
+  const { data } = await api.post<BodyMetricsEntry>("/body-metrics", payload);
+  return data;
+}
+
+export async function getBodyMetrics(): Promise<BodyMetricsEntry[]> {
+  const { data } = await api.get<BodyMetricsEntry[]>("/body-metrics");
   return data;
 }
 

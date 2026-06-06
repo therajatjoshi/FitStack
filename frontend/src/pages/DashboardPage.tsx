@@ -11,6 +11,7 @@ import {
   logSet,
 } from "../api";
 import type { Exercise, GeneratedWorkout, Workout } from "../api";
+import ConsultBanner from "../components/ConsultBanner";
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -150,6 +151,8 @@ export default function DashboardPage() {
             <p className="subtitle">Your training sessions</p>
           </div>
           <div className="header-actions">
+            <Link to="/profile" className="nav-icon-btn" title="Profile">👤</Link>
+            <Link to="/metrics" className="nav-icon-btn" title="Metrics">📊</Link>
             <button
               type="button"
               className={showForm ? "btn secondary" : "btn primary"}
@@ -215,6 +218,11 @@ export default function DashboardPage() {
                 Dismiss
               </button>
             </div>
+
+            <ConsultBanner
+              consult_recommended={generatedWorkout.consult_recommended}
+              disclaimer={generatedWorkout.disclaimer}
+            />
 
             <div className="table-wrap">
               <table className="data-table">

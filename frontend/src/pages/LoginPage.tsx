@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { login, register, setToken } from "../api";
+import { getProfile, login, register, setToken } from "../api";
 
 type AuthMode = "login" | "register";
 
@@ -60,11 +60,21 @@ export default function LoginPage() {
     try {
       if (mode === "register") {
         await register(email, password, name);
+        const tokenResponse = await login(email, password);
+        setToken(tokenResponse.access_token);
+        navigate("/onboarding");
+        return;
       }
 
       const tokenResponse = await login(email, password);
       setToken(tokenResponse.access_token);
-      navigate("/");
+
+      try {
+        const profile = await getProfile();
+        navigate(profile.profile_completeness === 0 ? "/onboarding" : "/");
+      } catch {
+        navigate("/");
+      }
     } catch (err: unknown) {
       setError(getApiErrorMessage(err));
     } finally {

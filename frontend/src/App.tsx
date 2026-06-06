@@ -4,6 +4,9 @@ import { getToken } from "./api";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import WorkoutPage from "./pages/WorkoutPage";
+import OnboardingPage from "./pages/OnboardingPage";
+import ProfilePage from "./pages/ProfilePage";
+import MetricsPage from "./pages/MetricsPage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   if (!getToken()) {
@@ -29,6 +32,30 @@ export default function App() {
         element={
           <ProtectedRoute>
             <WorkoutPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute>
+            <OnboardingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/metrics"
+        element={
+          <ProtectedRoute>
+            <MetricsPage />
           </ProtectedRoute>
         }
       />
