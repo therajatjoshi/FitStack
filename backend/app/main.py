@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.database import Base, engine
-from app.routers import auth, exercises, health, workouts
+from app.routers import ai, auth, exercises, health, workouts
 
 
 async def create_tables() -> None:
@@ -46,3 +46,4 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(workouts.router)
 app.include_router(exercises.router)
+app.include_router(ai.router)
