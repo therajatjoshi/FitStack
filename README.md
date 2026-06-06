@@ -83,6 +83,23 @@ docker-compose up --build
 
 API docs available at `http://localhost:8000/docs`
 
+### Frontend
+
+The React frontend lives in `frontend/` and talks to the live API at [https://rajatjoshi.fit](https://rajatjoshi.fit).
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open the URL shown in the terminal (typically `http://localhost:5173`).
+
+**Pages:**
+- `/login` — register or login (JWT stored in memory)
+- `/` — dashboard listing your workouts
+- `/workouts/:id` — view logs and log new sets
+
 ---
 
 ## Project Roadmap
