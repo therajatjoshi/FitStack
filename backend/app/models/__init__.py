@@ -1,10 +1,16 @@
 from app.models.exercise import Exercise, ExerciseCreate
-from app.models.workout import WorkoutExercise, WorkoutGenerateRequest, WorkoutResponse
+from app.models.workout import (
+    WorkoutCreate,
+    WorkoutLogCreate,
+    WorkoutLogResponse,
+    WorkoutResponse,
+)
 
 __all__ = [
     "Exercise",
     "ExerciseCreate",
-    "WorkoutExercise",
-    "WorkoutGenerateRequest",
+    "WorkoutCreate",
+    "WorkoutLogCreate",
+    "WorkoutLogResponse",
     "WorkoutResponse",
 ]
