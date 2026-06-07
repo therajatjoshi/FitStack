@@ -31,14 +31,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-cors_origins = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
-).split(",")
+# Known frontends — always allowed, even if the CORS_ORIGINS env var is
+# missing or wiped during a redeploy.
+DEFAULT_CORS_ORIGINS = [
+    "https://rajatjoshi.fit",
+    "https://lemon-sea-08ad45500.7.azurestaticapps.net",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Optional extras: comma-separated origins merged in from the env var.
+extra_cors_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+# Merge while preserving order and dropping duplicates.
+cors_origins = list(dict.fromkeys(DEFAULT_CORS_ORIGINS + extra_cors_origins))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in cors_origins if origin.strip()],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
