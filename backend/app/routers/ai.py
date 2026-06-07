@@ -4,7 +4,7 @@ import re
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from openai import AzureOpenAI
+from openai import AsyncAzureOpenAI
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -125,7 +125,7 @@ def _build_rich_system_prompt(
 
 # ── OpenAI helpers ────────────────────────────────────────────────────────────
 
-def _get_openai_client() -> AzureOpenAI:
+def _get_openai_client() -> AsyncAzureOpenAI:
     endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
     api_key = os.getenv("AZURE_OPENAI_API_KEY")
     if not endpoint or not api_key:
@@ -133,7 +133,7 @@ def _get_openai_client() -> AzureOpenAI:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI service is not configured",
         )
-    return AzureOpenAI(
+    return AsyncAzureOpenAI(
         azure_endpoint=endpoint,
         api_key=api_key,
         api_version="2024-08-01-preview",
@@ -178,7 +178,7 @@ async def generate_workout(
     user_message = payload.prompt or "Generate a personalized workout plan for me."
 
     try:
-        completion = client.chat.completions.create(
+        completion = await client.chat.completions.create(
             model=deployment,
             messages=[
                 {"role": "system", "content": system_prompt},

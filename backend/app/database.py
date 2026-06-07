@@ -10,6 +10,9 @@ DEFAULT_DATABASE_URL = (
 
 DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
 
+if "postgres.database.azure.com" in DATABASE_URL and "?ssl" not in DATABASE_URL:
+    DATABASE_URL += "?ssl=require"
+
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = async_sessionmaker(
     engine,

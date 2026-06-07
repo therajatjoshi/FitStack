@@ -30,7 +30,7 @@ def test_list_exercises_returns_expected_shape(client, db_session) -> None:
     assert all(isinstance(value, str) and value for value in exercises[0].values())
 
 
-def test_create_exercise_returns_201(client, db_session) -> None:
+def test_create_exercise_returns_201(auth_client, db_session) -> None:
     exercise_id = uuid.uuid4()
 
     async def refresh_side_effect(obj: ExerciseORM) -> None:
@@ -38,7 +38,7 @@ def test_create_exercise_returns_201(client, db_session) -> None:
 
     db_session.refresh.side_effect = refresh_side_effect
 
-    response = client.post(
+    response = auth_client.post(
         "/exercises",
         json={
             "name": "Barbell Back Squat",
@@ -54,3 +54,17 @@ def test_create_exercise_returns_201(client, db_session) -> None:
     assert body["name"] == "Barbell Back Squat"
     db_session.add.assert_called_once()
     db_session.commit.assert_awaited_once()
+
+
+def test_create_exercise_unauthenticated_returns_401(client) -> None:
+    response = client.post(
+        "/exercises",
+        json={
+            "name": "Barbell Back Squat",
+            "muscle_group": "legs",
+            "equipment": "barbell",
+            "difficulty": "intermediate",
+        },
+    )
+
+    assert response.status_code == 401

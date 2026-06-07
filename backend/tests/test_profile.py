@@ -361,7 +361,7 @@ def test_ai_generate_workout_injects_safety_when_flagged(
         captured.append(kwargs.get("messages", []))
         return mock_completion
 
-    mock_client.chat.completions.create.side_effect = _capture_and_return
+    mock_client.chat.completions.create = AsyncMock(side_effect=_capture_and_return)
 
     with patch("app.routers.ai._get_openai_client", return_value=mock_client):
         response = auth_client.post(
@@ -394,7 +394,7 @@ def test_ai_generate_workout_no_consult_when_no_flags(
     mock_completion.choices = [MagicMock()]
     mock_completion.choices[0].message.content = mock_content
     mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = mock_completion
+    mock_client.chat.completions.create = AsyncMock(return_value=mock_completion)
 
     with patch("app.routers.ai._get_openai_client", return_value=mock_client):
         response = auth_client.post("/ai/generate-workout", json={})

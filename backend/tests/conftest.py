@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 os.environ["SKIP_DB_INIT"] = "1"
+os.environ.setdefault("APP_ENV", "dev")
 
 from app.database import get_db  # noqa: E402
 from app.dependencies import get_current_user  # noqa: E402

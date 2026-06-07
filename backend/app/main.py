@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,10 +17,18 @@ async def create_tables() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if os.getenv("SKIP_DB_INIT") != "1":
+        await create_tables()
+    yield
+
+
 app = FastAPI(
     title="FitStack API",
     description="AI-powered fitness programming platform",
     version=__version__,
+    lifespan=lifespan,
 )
 
 cors_origins = os.getenv(
@@ -34,13 +43,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def on_startup() -> None:
-    if os.getenv("SKIP_DB_INIT") == "1":
-        return
-    await create_tables()
 
 
 @app.get("/consent-text", tags=["consent"])

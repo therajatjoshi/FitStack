@@ -7,6 +7,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 JWT_SECRET = os.getenv("JWT_SECRET", "fitstack-dev-jwt-secret-change-me")
+
+if JWT_SECRET == "fitstack-dev-jwt-secret-change-me" and os.getenv("APP_ENV") != "dev":
+    raise RuntimeError("JWT_SECRET must be changed from the default in production")
+
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
