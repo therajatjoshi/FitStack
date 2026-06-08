@@ -35,6 +35,7 @@ app = FastAPI(
 # missing or wiped during a redeploy.
 DEFAULT_CORS_ORIGINS = [
     "https://rajatjoshi.fit",
+    "https://app.rajatjoshi.fit",
     "https://lemon-sea-08ad45500.7.azurestaticapps.net",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
