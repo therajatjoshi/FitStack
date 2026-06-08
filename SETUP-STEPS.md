@@ -8,6 +8,8 @@ Simple log of what has been built so far and how to run it. Use this to walk you
 
 - FastAPI backend with JWT auth, PostgreSQL persistence, and Azure OpenAI workout generation
 - User profile system — onboarding fields, body metrics time-series, medical safety flags
+- **Adaptive workout loop** — AI plans stored as data, one-tap session feedback, progressive overload on the next plan
+- **Admin control** — separate admin login to list/delete users and clean stale accounts
 - React frontend (Vite + TypeScript) with onboarding, profile, metrics, and workout logging
 - Docker container for the backend (local + Azure)
 - GitHub Actions — **CI** (tests on every push/PR) + **Deploy** (backend + frontend on push to `main`)
@@ -666,14 +668,138 @@ Open http://localhost:5173 — API calls go to `https://rajatjoshi.fit` by defau
 
 ---
 
+## Step 17 — User identity persistence + session handling
+
+**Goal:** Stop dropping data the UI already collects, and handle expired sessions.
+
+**Problem fixed:** Onboarding and the profile screen collected `sex` and `date_of_birth`
+but there was no write path, so they were silently discarded — which capped profile
+completeness at 80% and starved the AI of sex/age.
+
+**What was added:**
+
+| Method | Path | What it does |
+|--------|------|--------------|
+| GET | `/users/me` | Returns the current user's id, email, name, sex, date_of_birth |
+| PUT | `/users/me` | Updates `sex` / `date_of_birth` (validated: known sex, DOB not future, age ≤ 120) |
+
+- Onboarding step 1 and the profile **Basics** card now persist sex + DOB.
+- **401 handling:** the frontend axios client gained a response interceptor — on a 401 it
+  clears the token and redirects to `/login` (skips the auth endpoints so a wrong-password
+  error still shows inline on the login form).
+- **Logout:** a logout button on the dashboard (previously `clearToken` was never called).
+
+**Tests:** `tests/test_users.py` — auth required, update sex/DOB, partial update, and 422s for
+future DOB / invalid sex.
+
+---
+
+## Step 18 — Adaptive (progressive) workout loop
+
+**Goal:** Turn the one-shot AI generator into a coach that adapts to how training felt —
+kept deliberately simple (no per-set RPE, no charts).
+
+**The loop:** generate plan → user marks the session done with **one tap**
+(*easy / just right / hard*) → the next generation reads recent plans + how they felt +
+latest body weight and applies progressive overload, explaining the change in one line.
+
+**Data model change** — AI plans are now stored as **data on the workout row** instead of
+being flattened into "performed" set logs. New `workouts` columns:
+
+| Column | Purpose |
+|--------|---------|
+| `source` | `'manual'` or `'ai'` |
+| `plan` (JSON) | Prescribed exercises + `progression_note` |
+| `completed_at` | Set when the user marks the session done |
+| `difficulty` | `easy` / `just_right` / `hard` |
+
+**New endpoints:**
+
+| Method | Path | What it does |
+|--------|------|--------------|
+| POST | `/workouts/generated` | Save an AI plan as a single workout (no more N+1 exercise/log writes) |
+| POST | `/workouts/{id}/complete` | Record session difficulty (the feedback signal) |
+| GET | `/workouts/{id}` | Fetch one workout (plan + completion state) |
+
+**Two earlier bugs fixed as a side effect:** AI prescriptions are no longer recorded as
+*performed* sets, and the global `exercises` table is no longer polluted with fake-metadata
+rows on every save.
+
+**Migrations:** new `app/migrations.py` runs idempotent `ALTER TABLE ... ADD COLUMN IF NOT
+EXISTS` on startup (still no Alembic) — needed because `create_all` adds new *tables* but not
+new *columns* to an existing table.
+
+**Frontend:** dashboard shows the `progression_note` and a ✓ done badge; the workout page
+renders the prescribed plan and the one-tap "How did it go?" control.
+
+**Tests:** added to `tests/test_workouts.py` — save-generated creates one AI workout, complete
+sets difficulty, bad difficulty → 422.
+
+---
+
+## Step 19 — Admin control (separate login)
+
+**Goal:** Operator tooling to list users, delete any account, and clean stale accounts —
+fully isolated from the normal user login.
+
+**Design:** a separate `admins` table (not an `is_admin` flag on users). Admin tokens carry a
+`type: "admin"` claim, so **user tokens can't hit admin endpoints and vice-versa**.
+
+**New endpoints (all require an admin token except login):**
+
+| Method | Path | What it does |
+|--------|------|--------------|
+| POST | `/admin/auth/login` | Admin email/password → admin token |
+| GET | `/admin/users` | All users + counts, consent, and a stale flag |
+| GET | `/admin/users/stale` | Preview of stale accounts |
+| DELETE | `/admin/users/{id}` | Delete **any** account (children cascade via DB FKs) |
+| POST | `/admin/users/cleanup` | Delete all stale accounts (recomputed server-side) |
+
+**Stale = abandoned OR inactive:**
+- *Abandoned*: never accepted consent **and** older than 30 days.
+- *Inactive*: no workouts and no body metrics **and** older than 90 days.
+- Thresholds are constants in `app/services/admin_service.py`.
+
+**Frontend:** `/admin/login` and an `/admin` page (own token key `fitstack_admin_token`,
+separate axios instance) — user table with delete-with-confirm + a preview→confirm cleanup flow.
+
+**Tests:** `tests/test_admin.py` — stale logic, auth isolation both directions, login
+success/failure, delete + 404, cleanup deletes only stale.
+
+### Provisioning an admin
+
+Admins are **database rows**, so they persist across redeploys. Two ways to create one:
+
+1. **Bootstrap on startup (optional)** — set `ADMIN_EMAIL` + `ADMIN_PASSWORD` App Service
+   settings; on boot the app seeds that admin if it doesn't exist. Add these in the **Azure
+   Portal** (additive) — do **not** `terraform apply`, since the Terraform `app_settings` map
+   is partial and an apply would wipe portal-only settings like `DATABASE_URL`/`JWT_SECRET`.
+
+2. **One-off script (recommended for an existing deployment)** — run from `backend/` with
+   `DATABASE_URL` pointing at the target DB (your dev-IP firewall rule already allows it).
+   No admin password ever lands in app settings:
+
+   ```powershell
+   $env:DATABASE_URL = "postgresql+asyncpg://fitstackadmin:<PG_PASSWORD>@fitstack-pg-tn26.postgres.database.azure.com:5432/fitstack_db"
+   .\venv\Scripts\python.exe -m scripts.create_admin joshi.rajat@gmail.com
+   # prompts for a password (min 8 chars); idempotent — re-running reports "already exists"
+   ```
+
+   Then log in at **https://app.rajatjoshi.fit/admin/login**. This admin credential is separate
+   from the same-email *user* account.
+
+---
+
 ## What's next (not done yet)
 
 - [ ] Azure AI Search RAG pipeline (exercise science knowledge base)
 - [ ] Entra ID B2C authentication (replace email/password JWT)
-- [ ] Progressive overload tracking engine
+- [x] Progressive overload — basic adaptive loop shipped (Step 18); periodization still pending
 - [ ] Periodization logic (linear → undulating → block)
+- [ ] Diet & supplement plans
 - [ ] Coach mode (multi-tenant)
-- [ ] Alembic migrations (currently using `create_all` on startup)
+- [ ] Alembic migrations (currently `create_all` + idempotent `ALTER TABLE` in `app/migrations.py`)
+- [ ] Consolidate portal-only App Service settings into Terraform so `apply` is wipe-safe
 
 ---
 
@@ -692,4 +818,4 @@ Open http://localhost:5173 — API calls go to `https://rajatjoshi.fit` by defau
 
 ---
 
-*Last updated: June 7, 2026*
+*Last updated: June 9, 2026*
