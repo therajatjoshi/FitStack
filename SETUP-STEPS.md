@@ -790,6 +790,81 @@ Admins are **database rows**, so they persist across redeploys. Two ways to crea
 
 ---
 
+## Reference — environment variables
+
+The backend is configured entirely via environment variables. In production these come from
+**Azure Key Vault** (see next section); locally you set them in your shell or a `.env`.
+
+| Variable | Required? | Default | Used by | Notes |
+|----------|-----------|---------|---------|-------|
+| `DATABASE_URL` | Prod | `postgresql+asyncpg://…@localhost:5432/fitstack_db` | DB connection | asyncpg format; Azure host auto-appends `?ssl=require` |
+| `JWT_SECRET` | Prod | `fitstack-dev-jwt-secret-change-me` | auth | **App refuses to start** with the default unless `APP_ENV=dev` |
+| `APP_ENV` | Local | *(unset)* | auth guard | Set to `dev` for local runs so the default `JWT_SECRET` is allowed |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `1440` (24h) | auth | JWT lifetime |
+| `AZURE_OPENAI_ENDPOINT` | For AI | *(none)* | `/ai/generate-workout` | Missing → endpoint returns 503 |
+| `AZURE_OPENAI_API_KEY` | For AI | *(none)* | `/ai/generate-workout` | Missing → 503 |
+| `AZURE_OPENAI_DEPLOYMENT` | No | `gpt-4o-mini` | `/ai/generate-workout` | Deployment name |
+| `CORS_ORIGINS` | No | `""` | CORS | Comma-separated; **merged with** hardcoded defaults (see below) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | No | *(none)* | startup seed | If both set, seeds a bootstrap admin on boot (Step 19) |
+| `SKIP_DB_INIT` | Tests | *(unset)* | startup | `1` skips `create_all` + migrations + admin seed (used by the test suite) |
+| `WEBSITES_PORT` | Azure | `8000` | App Service | Tells App Service which container port to route to |
+
+**Local quick start (the gotcha):** the app will not boot with the default `JWT_SECRET` unless
+you opt into dev mode:
+
+```powershell
+cd backend
+$env:APP_ENV = "dev"          # or set a real $env:JWT_SECRET
+$env:DATABASE_URL = "postgresql+asyncpg://fitstackadmin:<pw>@localhost:5432/fitstack_db"
+.\venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+**CORS:** allowed origins are **hardcoded** in `app/main.py` (`rajatjoshi.fit`,
+`app.rajatjoshi.fit`, the `*.azurestaticapps.net` URL, and `localhost:5173`) so they survive
+redeploys, then any `CORS_ORIGINS` env entries are merged on top.
+
+---
+
+## Reference — secrets & Azure Key Vault
+
+Production secrets are **not** stored as plain App Service settings or in Terraform. They live
+in an Azure Key Vault named **`fitstack-kv`** and are pulled in via Key Vault references. The
+mapping is captured in [`appsettings.json`](appsettings.json) (applied to the Web App, e.g.
+`az webapp config appsettings set --name fitstack-tn26-api -g fitstack-rg --settings @appsettings.json`):
+
+| App setting | Key Vault secret |
+|-------------|------------------|
+| `DATABASE_URL` | `DATABASE-URL` |
+| `JWT_SECRET` | `JWT-SECRET` |
+| `AZURE_OPENAI_ENDPOINT` | `AZURE-OPENAI-ENDPOINT` |
+| `AZURE_OPENAI_API_KEY` | `AZURE-OPENAI-API-KEY` |
+| `AZURE_OPENAI_DEPLOYMENT` | `AZURE-OPENAI-DEPLOYMENT` |
+
+> ⚠️ **Known infra drift:** the `fitstack-kv` Key Vault, its secrets, the Web App's
+> managed identity, and the `appsettings.json` application were all set up **outside Terraform**
+> — `infra/main.tf` does not define them, and `CORS_ORIGINS` / `ADMIN_EMAIL` / `ADMIN_PASSWORD`
+> are not in `appsettings.json` either. This is why a `terraform apply` of the partial
+> `app_settings` map can wipe live settings. Bringing the Key Vault + full app settings into
+> Terraform is the open hardening item in *What's next*.
+
+---
+
+## Reference — production smoke test
+
+[`smoke_test.ps1`](smoke_test.ps1) runs an end-to-end check against `https://rajatjoshi.fit`
+(register → login → create workout → fetch exercises → log a set → fetch logs).
+
+```powershell
+.\smoke_test.ps1
+```
+
+It creates a throwaway `test_<timestamp>@test.com` user each run. **Coverage gap:** it currently
+exercises only the original auth + workout-logging path — it does **not** cover profile/onboarding,
+`/ai/generate-workout`, the adaptive endpoints (Step 18), or admin (Step 19). Worth extending as
+those flows are now live.
+
+---
+
 ## What's next (not done yet)
 
 - [ ] Azure AI Search RAG pipeline (exercise science knowledge base)
@@ -808,7 +883,7 @@ Admins are **database rows**, so they persist across redeploys. Two ways to crea
 1. **Routers vs services:** Routes only handle HTTP. Services hold the logic. This makes it easy to change database or AI behavior without changing the API contract.
 2. **Docker:** Same backend image runs locally and in Azure. No "works on my machine" surprises.
 3. **CI vs Deploy:** `ci.yml` runs tests on every push/PR. `deploy.yml` deploys backend + frontend only on push to `main`.
-4. **Auth:** JWT tokens stored in browser memory (not localStorage). Entra ID B2C is planned to replace email/password auth.
+4. **Auth:** JWT tokens are stored in `sessionStorage` (key `fitstack_token`; admin uses a separate `fitstack_admin_token`) — they survive a tab refresh but not a tab close, and never persist to `localStorage`. A 401 from the API clears the token and redirects to login. Entra ID B2C is planned to replace email/password auth.
 5. **Profile completeness:** A 0–100 score encourages onboarding but never blocks workout generation. Optional fields have sane defaults.
 6. **Medical flags:** Not diagnosis — they only tell the AI to be conservative and show a "consult a professional" banner when appropriate.
 7. **Body metrics:** Always append-only time-series. Users log new entries; history is preserved for trend tracking.
