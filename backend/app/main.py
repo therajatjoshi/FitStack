@@ -6,8 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.constants import CONSENT_TEXT, CONSENT_VERSION
-from app.database import Base, engine
-from app.routers import ai, auth, exercises, health, profile, workouts
+from app.database import AsyncSessionLocal, Base, engine
+from app.migrations import run_light_migrations
+from app.routers import admin, ai, auth, exercises, health, profile, users, workouts
+from app.services import admin_service
 
 
 async def create_tables() -> None:
@@ -21,7 +23,19 @@ async def create_tables() -> None:
 async def lifespan(app: FastAPI):
     if os.getenv("SKIP_DB_INIT") != "1":
         await create_tables()
+        await run_light_migrations(engine)
+        await _seed_admin()
     yield
+
+
+async def _seed_admin() -> None:
+    """Bootstrap the operator account from env vars, if configured."""
+    email = os.getenv("ADMIN_EMAIL")
+    password = os.getenv("ADMIN_PASSWORD")
+    if not email or not password:
+        return
+    async with AsyncSessionLocal() as session:
+        await admin_service.ensure_seed_admin(session, email, password)
 
 
 app = FastAPI(
@@ -67,7 +81,9 @@ async def get_consent_text() -> dict[str, str]:
 
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(workouts.router)
 app.include_router(exercises.router)
 app.include_router(ai.router)
 app.include_router(profile.router)
+app.include_router(admin.router)

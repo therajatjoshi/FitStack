@@ -1,16 +1,15 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
-  createExercise,
+  clearToken,
   createWorkout,
   generateWorkout,
-  getExercises,
   getWorkouts,
-  logSet,
+  saveGeneratedWorkout,
 } from "../api";
-import type { Exercise, GeneratedWorkout, Workout } from "../api";
+import type { GeneratedWorkout, Workout } from "../api";
 import ConsultBanner from "../components/ConsultBanner";
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
@@ -25,17 +24,14 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
-function findExerciseByName(
-  exercises: Exercise[],
-  name: string,
-): Exercise | undefined {
-  const normalized = name.trim().toLowerCase();
-  return exercises.find(
-    (exercise) => exercise.name.trim().toLowerCase() === normalized,
-  );
-}
+const DIFFICULTY_LABEL: Record<string, string> = {
+  easy: "Felt easy",
+  just_right: "Just right",
+  hard: "Felt hard",
+};
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +60,11 @@ export default function DashboardPage() {
   useEffect(() => {
     loadWorkouts();
   }, []);
+
+  function handleLogout() {
+    clearToken();
+    navigate("/login", { replace: true });
+  }
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -104,35 +105,7 @@ export default function DashboardPage() {
     setError(null);
 
     try {
-      const savedWorkout = await createWorkout(
-        generatedWorkout.workout_name,
-        generatedWorkout.workout_type,
-      );
-
-      let exercises = await getExercises();
-
-      for (const generatedExercise of generatedWorkout.exercises) {
-        let exercise = findExerciseByName(exercises, generatedExercise.name);
-
-        if (!exercise) {
-          exercise = await createExercise({
-            name: generatedExercise.name,
-            muscle_group: "general",
-            equipment: "bodyweight",
-            difficulty: "intermediate",
-          });
-          exercises = [...exercises, exercise];
-        }
-
-        await logSet(
-          savedWorkout.id,
-          exercise.id,
-          generatedExercise.sets,
-          generatedExercise.reps,
-          generatedExercise.weight_kg,
-        );
-      }
-
+      await saveGeneratedWorkout(generatedWorkout);
       setGeneratedWorkout(null);
       await loadWorkouts();
     } catch (err) {
@@ -153,6 +126,14 @@ export default function DashboardPage() {
           <div className="header-actions">
             <Link to="/profile" className="nav-icon-btn" title="Profile">👤</Link>
             <Link to="/metrics" className="nav-icon-btn" title="Metrics">📊</Link>
+            <button
+              type="button"
+              className="nav-icon-btn"
+              title="Log out"
+              onClick={handleLogout}
+            >
+              🚪
+            </button>
             <button
               type="button"
               className={showForm ? "btn secondary" : "btn primary"}
@@ -219,6 +200,12 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {generatedWorkout.progression_note && (
+              <p className="progression-note">
+                ↗ {generatedWorkout.progression_note}
+              </p>
+            )}
+
             <ConsultBanner
               consult_recommended={generatedWorkout.consult_recommended}
               disclaimer={generatedWorkout.disclaimer}
@@ -280,6 +267,11 @@ export default function DashboardPage() {
                     <div className="workout-item-title">
                       <span>{workout.name}</span>
                       <span className="badge">{workout.workout_type}</span>
+                      {workout.completed_at && (
+                        <span className="badge badge-done">
+                          ✓ {DIFFICULTY_LABEL[workout.difficulty ?? ""] ?? "Done"}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <span className="muted">

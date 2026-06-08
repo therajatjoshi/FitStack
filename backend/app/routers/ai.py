@@ -11,19 +11,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.constants import CONSENT_TEXT
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models.db_models import BodyMetrics, MedicalFlags, Profile, User
+from app.models.db_models import BodyMetrics, MedicalFlags, Profile, User, Workout
 from app.services import profile_service
 from app.services.safety_service import build_safety_constraints
+from app.services.workout_service import WorkoutService
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+workout_service = WorkoutService()
+
+_DIFFICULTY_LABELS = {
+    "easy": "felt easy",
+    "just_right": "felt just right",
+    "hard": "felt hard",
+}
 
 _JSON_SHAPE = (
     '{"workout_name": string, "workout_type": string, '
     '"exercises": [{"name": string, "sets": number, "reps": number, '
-    '"weight_kg": number, "notes": string}]}'
+    '"weight_kg": number, "notes": string}], "progression_note": string}'
 )
 _BASE_SYSTEM_PROMPT = (
     "You are an expert fitness coach. Generate a structured workout plan. "
+    "If previous sessions are provided, apply progressive overload: when the "
+    "last session felt easy, make a small increase (add load or reps); when it "
+    "felt hard, hold or slightly reduce; when it felt just right, progress "
+    "modestly. Put a one-sentence explanation of what you changed and why in "
+    "'progression_note' (leave it empty for a first session). "
     f"Respond in JSON only with this shape: {_JSON_SHAPE}"
 )
 
@@ -47,12 +60,14 @@ class _GeneratedWorkoutCore(BaseModel):
     workout_name: str
     workout_type: str
     exercises: list[GeneratedExercise]
+    progression_note: str = ""
 
 
 class GeneratedWorkoutResponse(BaseModel):
     workout_name: str
     workout_type: str
     exercises: list[GeneratedExercise]
+    progression_note: str = ""
     disclaimer: str = ""
     consult_recommended: bool = False
 
@@ -123,6 +138,25 @@ def _build_rich_system_prompt(
     return "\n".join(lines)
 
 
+def _build_history_block(recent_plans: list[Workout]) -> str:
+    """Render recently completed AI sessions (newest first) as feedback context
+    for progressive overload."""
+    if not recent_plans:
+        return ""
+
+    lines = ["", "Previous sessions (most recent first):"]
+    for workout in recent_plans:
+        felt = _DIFFICULTY_LABELS.get(workout.difficulty or "", "completed")
+        lines.append(f"- {workout.name} ({felt}):")
+        exercises = (workout.plan or {}).get("exercises", [])
+        for ex in exercises:
+            lines.append(
+                f"    {ex.get('name')}: {ex.get('sets')}x{ex.get('reps')} "
+                f"@ {ex.get('weight_kg')}kg"
+            )
+    return "\n".join(lines)
+
+
 # ── OpenAI helpers ────────────────────────────────────────────────────────────
 
 def _get_openai_client() -> AsyncAzureOpenAI:
@@ -168,10 +202,13 @@ async def generate_workout(
     medical_flags = await profile_service.get_medical_flags(db, current_user.id)
     latest_metrics = await profile_service.get_latest_body_metrics(db, current_user.id)
 
+    recent_plans = await workout_service.list_recent_ai_plans(db, current_user)
+
     safety = build_safety_constraints(current_user, medical_flags)
     system_prompt = _build_rich_system_prompt(
         current_user, user_profile, latest_metrics, safety.constraint_text
     )
+    system_prompt += _build_history_block(recent_plans)
 
     client = _get_openai_client()
     deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
@@ -204,6 +241,7 @@ async def generate_workout(
         workout_name=core.workout_name,
         workout_type=core.workout_type,
         exercises=core.exercises,
+        progression_note=core.progression_note,
         disclaimer=safety.disclaimer or CONSENT_TEXT,
         consult_recommended=safety.requires_consult,
     )

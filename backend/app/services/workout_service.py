@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -5,7 +6,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db_models import Exercise, User, Workout, WorkoutLog
-from app.models.workout import WorkoutCreate, WorkoutLogCreate, WorkoutLogResponse, WorkoutResponse
+from app.models.workout import (
+    CompleteWorkoutRequest,
+    SaveGeneratedWorkoutRequest,
+    WorkoutCreate,
+    WorkoutLogCreate,
+    WorkoutLogResponse,
+    WorkoutPlan,
+    WorkoutResponse,
+)
 
 
 class WorkoutService:
@@ -15,6 +24,10 @@ class WorkoutService:
             user_id=str(workout.user_id),
             name=workout.name,
             workout_type=workout.workout_type,
+            source=workout.source or "manual",
+            plan=WorkoutPlan.model_validate(workout.plan) if workout.plan else None,
+            completed_at=workout.completed_at,
+            difficulty=workout.difficulty,
             created_at=workout.created_at,
         )
 
@@ -45,6 +58,68 @@ class WorkoutService:
         await db.commit()
         await db.refresh(workout)
         return self.to_workout_response(workout)
+
+    async def save_generated_workout(
+        self,
+        db: AsyncSession,
+        user: User,
+        payload: SaveGeneratedWorkoutRequest,
+    ) -> WorkoutResponse:
+        """Persist an AI-generated plan as a single workout row.
+
+        The prescription is stored as JSON in `plan` — no WorkoutLog rows and no
+        new Exercise rows are created (those represent *performed* training and a
+        curated library, respectively).
+        """
+        workout = Workout(
+            user_id=user.id,
+            name=payload.workout_name,
+            workout_type=payload.workout_type,
+            source="ai",
+            plan={
+                "exercises": [e.model_dump() for e in payload.exercises],
+                "progression_note": payload.progression_note,
+            },
+        )
+        db.add(workout)
+        await db.commit()
+        await db.refresh(workout)
+        return self.to_workout_response(workout)
+
+    async def complete_workout(
+        self,
+        db: AsyncSession,
+        user: User,
+        workout_id: UUID,
+        payload: CompleteWorkoutRequest,
+    ) -> WorkoutResponse:
+        workout = await self.get_user_workout(db, user, workout_id)
+        workout.completed_at = datetime.now(UTC)
+        workout.difficulty = payload.difficulty
+        db.add(workout)
+        await db.commit()
+        await db.refresh(workout)
+        return self.to_workout_response(workout)
+
+    async def list_recent_ai_plans(
+        self,
+        db: AsyncSession,
+        user: User,
+        limit: int = 3,
+    ) -> list[Workout]:
+        """Most-recently completed AI workouts, newest first — feedback context
+        for the next generation."""
+        result = await db.execute(
+            select(Workout)
+            .where(
+                Workout.user_id == user.id,
+                Workout.source == "ai",
+                Workout.completed_at.is_not(None),
+            )
+            .order_by(Workout.completed_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
 
     async def list_workouts(
         self,

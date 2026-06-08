@@ -4,6 +4,7 @@ import {
   getProfile,
   updateMedicalFlags,
   updateProfile,
+  updateUser,
 } from "../api";
 import type { FullProfile, MedicalFlagsPayload } from "../api";
 
@@ -169,9 +170,12 @@ function BasicsCard({ profile, onSaved }: { profile: FullProfile; onSaved: () =>
     setSaving(true);
     setError(null);
     try {
+      await updateUser({
+        sex: sex || null,
+        date_of_birth: dob || null,
+      });
       const payload: Record<string, unknown> = {};
       if (heightCm) payload.height_cm = parseFloat(heightCm);
-      // TODO: sex and date_of_birth require a PUT /users/me endpoint (not yet implemented)
       await updateProfile(payload);
       onSaved();
     } catch {

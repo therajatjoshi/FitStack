@@ -1,11 +1,30 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getExercises, getWorkoutLogs, logSet } from "../api";
-import type { Exercise, WorkoutLog } from "../api";
+import {
+  completeWorkout,
+  getExercises,
+  getWorkout,
+  getWorkoutLogs,
+  logSet,
+} from "../api";
+import type { Exercise, Workout, WorkoutDifficulty, WorkoutLog } from "../api";
+
+const DIFFICULTY_OPTIONS: { value: WorkoutDifficulty; label: string }[] = [
+  { value: "easy", label: "Too easy" },
+  { value: "just_right", label: "Just right" },
+  { value: "hard", label: "Too hard" },
+];
+
+const DIFFICULTY_LABEL: Record<string, string> = {
+  easy: "Too easy",
+  just_right: "Just right",
+  hard: "Too hard",
+};
 
 export default function WorkoutPage() {
   const { workoutId } = useParams<{ workoutId: string }>();
+  const [workout, setWorkout] = useState<Workout | null>(null);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +34,7 @@ export default function WorkoutPage() {
   const [reps, setReps] = useState(10);
   const [weightKg, setWeightKg] = useState(60);
   const [submitting, setSubmitting] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   async function loadData() {
     if (!workoutId) return;
@@ -23,10 +43,12 @@ export default function WorkoutPage() {
     setError(null);
 
     try {
-      const [logsData, exercisesData] = await Promise.all([
+      const [workoutData, logsData, exercisesData] = await Promise.all([
+        getWorkout(workoutId),
         getWorkoutLogs(workoutId),
         getExercises(),
       ]);
+      setWorkout(workoutData);
       setLogs(logsData);
       setExercises(exercisesData);
       if (exercisesData.length > 0 && !exerciseId) {
@@ -42,6 +64,20 @@ export default function WorkoutPage() {
   useEffect(() => {
     loadData();
   }, [workoutId]);
+
+  async function handleComplete(difficulty: WorkoutDifficulty) {
+    if (!workoutId) return;
+    setCompleting(true);
+    setError(null);
+    try {
+      const updated = await completeWorkout(workoutId, difficulty);
+      setWorkout(updated);
+    } catch {
+      setError("Failed to save how the session went.");
+    } finally {
+      setCompleting(false);
+    }
+  }
 
   async function handleLogSet(event: FormEvent) {
     event.preventDefault();
@@ -73,10 +109,74 @@ export default function WorkoutPage() {
 
       <header className="header">
         <div>
-          <h1>Workout Logs</h1>
+          <h1>{workout?.name ?? "Workout"}</h1>
           <p className="subtitle">Log sets and track progress</p>
         </div>
       </header>
+
+      {workout?.plan && (
+        <section className="card section-gap">
+          <h2 className="section-title">This session's plan</h2>
+
+          {workout.plan.progression_note && (
+            <p className="progression-note">↗ {workout.plan.progression_note}</p>
+          )}
+
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Exercise</th>
+                  <th>Sets</th>
+                  <th>Reps</th>
+                  <th>Weight (kg)</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {workout.plan.exercises.map((ex) => (
+                  <tr key={ex.name}>
+                    <td>{ex.name}</td>
+                    <td>{ex.sets}</td>
+                    <td>{ex.reps}</td>
+                    <td>{ex.weight_kg}</td>
+                    <td>{ex.notes || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="how-did-it-go">
+            {workout.completed_at ? (
+              <p className="muted">
+                ✓ Logged as{" "}
+                <strong>
+                  {DIFFICULTY_LABEL[workout.difficulty ?? ""] ?? "done"}
+                </strong>
+                . Your next AI plan will adapt to this.
+              </p>
+            ) : (
+              <>
+                <span className="how-did-it-go-label">How did it go?</span>
+                <div className="seg-group">
+                  {DIFFICULTY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className="seg-btn"
+                      disabled={completing}
+                      onClick={() => handleComplete(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       <form onSubmit={handleLogSet} className="card form">
         <h2 className="section-title">Log a Set</h2>

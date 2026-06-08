@@ -1,12 +1,15 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 import { getToken } from "./api";
+import { getAdminToken } from "./adminApi";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import WorkoutPage from "./pages/WorkoutPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import ProfilePage from "./pages/ProfilePage";
 import MetricsPage from "./pages/MetricsPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminPage from "./pages/AdminPage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   // Restored from sessionStorage on each render — survives page refresh within the tab.
@@ -21,6 +24,13 @@ function LoginRoute() {
     return <Navigate to="/" replace />;
   }
   return <LoginPage />;
+}
+
+function ProtectedAdminRoute({ children }: { children: ReactNode }) {
+  if (!getAdminToken()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  return <>{children}</>;
 }
 
 export default function App() {
@@ -65,6 +75,15 @@ export default function App() {
           <ProtectedRoute>
             <MetricsPage />
           </ProtectedRoute>
+        }
+      />
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedAdminRoute>
+            <AdminPage />
+          </ProtectedAdminRoute>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

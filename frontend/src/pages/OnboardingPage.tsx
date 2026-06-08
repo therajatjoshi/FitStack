@@ -6,6 +6,7 @@ import {
   postConsent,
   updateMedicalFlags,
   updateProfile,
+  updateUser,
 } from "../api";
 import type { ConsentText, MedicalFlagsPayload } from "../api";
 
@@ -48,13 +49,13 @@ function StepAboutYou({ onNext }: { onNext: (goal: string) => void }) {
     setSaving(true);
     setError(null);
     try {
+      await updateUser({ sex, date_of_birth: dateOfBirth });
       await updateProfile({
         height_cm: parseFloat(heightCm),
         primary_goal: primaryGoal,
         experience_level: experienceLevel,
       });
       await addBodyMetrics({ weight_kg: parseFloat(currentWeightKg) });
-      // TODO: sex and date_of_birth require a PUT /users/me endpoint (not yet implemented)
       onNext(primaryGoal);
     } catch {
       setError("Failed to save. Please try again.");

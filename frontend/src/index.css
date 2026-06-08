@@ -614,6 +614,16 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 /* Section divider */
 .section-gap { margin-bottom: 2rem; }
 
+/* Progressive overload note (AI-generated) */
+.progression-note { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 12px; padding: 0.75rem 1rem; color: #c7d2fe; font-size: 0.9rem; line-height: 1.5; margin: 0 0 1rem; }
+
+/* Completed-session badge */
+.badge-done { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #86efac; }
+
+/* "How did it go?" feedback control */
+.how-did-it-go { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.08); }
+.how-did-it-go-label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-secondary); }
+
 /* Consent box */
 .consent-text-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1rem; max-height: 180px; overflow-y: auto; color: rgba(255,255,255,0.7); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1rem; }
 

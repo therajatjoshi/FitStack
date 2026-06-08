@@ -30,6 +30,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// On 401, the session has expired or the token is invalid. Clear it and send
+// the user back to login — but never for the auth endpoints themselves, where a
+// 401 is a "wrong credentials" message the form should display inline.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const url = error.config?.url ?? "";
+      const isAuthCall =
+        url.includes("/auth/login") || url.includes("/auth/register");
+      if (!isAuthCall) {
+        clearToken();
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+      }
+    }
+    return Promise.reject(error);
+  },
+);
+
 export interface User {
   id: string;
   email: string;
@@ -44,11 +65,22 @@ export interface TokenResponse {
   token_type: string;
 }
 
+export interface WorkoutPlan {
+  exercises: GeneratedExercise[];
+  progression_note: string;
+}
+
+export type WorkoutDifficulty = "easy" | "just_right" | "hard";
+
 export interface Workout {
   id: string;
   user_id: string;
   name: string;
   workout_type: string;
+  source: string;
+  plan: WorkoutPlan | null;
+  completed_at: string | null;
+  difficulty: WorkoutDifficulty | null;
   created_at: string;
 }
 
@@ -82,6 +114,7 @@ export interface GeneratedWorkout {
   workout_name: string;
   workout_type: string;
   exercises: GeneratedExercise[];
+  progression_note: string;
   consult_recommended: boolean;
   disclaimer: string;
 }
@@ -138,6 +171,11 @@ export interface BodyMetricsEntry {
 export interface ConsentText {
   version: string;
   text: string;
+}
+
+export interface UserUpdatePayload {
+  sex?: string | null;
+  date_of_birth?: string | null;
 }
 
 export interface ProfileUpdatePayload {
@@ -216,6 +254,33 @@ export async function createWorkout(
   return data;
 }
 
+export async function getWorkout(workoutId: string): Promise<Workout> {
+  const { data } = await api.get<Workout>(`/workouts/${workoutId}`);
+  return data;
+}
+
+export async function saveGeneratedWorkout(
+  plan: GeneratedWorkout,
+): Promise<Workout> {
+  const { data } = await api.post<Workout>("/workouts/generated", {
+    workout_name: plan.workout_name,
+    workout_type: plan.workout_type,
+    exercises: plan.exercises,
+    progression_note: plan.progression_note,
+  });
+  return data;
+}
+
+export async function completeWorkout(
+  workoutId: string,
+  difficulty: WorkoutDifficulty,
+): Promise<Workout> {
+  const { data } = await api.post<Workout>(`/workouts/${workoutId}/complete`, {
+    difficulty,
+  });
+  return data;
+}
+
 export async function getExercises(): Promise<Exercise[]> {
   const { data } = await api.get<Exercise[]>("/exercises");
   return data;
@@ -244,6 +309,13 @@ export async function getConsentText(): Promise<ConsentText> {
 
 export async function getProfile(): Promise<FullProfile> {
   const { data } = await api.get<FullProfile>("/profile/me");
+  return data;
+}
+
+export async function updateUser(
+  payload: UserUpdatePayload,
+): Promise<unknown> {
+  const { data } = await api.put("/users/me", payload);
   return data;
 }
 

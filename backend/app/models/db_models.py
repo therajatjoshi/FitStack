@@ -64,6 +64,21 @@ class User(Base):
     )
 
 
+class Admin(Base):
+    """Operator account, fully isolated from `User` — separate login path."""
+
+    __tablename__ = "admins"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class Profile(Base):
     __tablename__ = "profiles"
 
@@ -184,6 +199,18 @@ class Workout(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     workout_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    # 'manual' (user-created) or 'ai' (generated plan stored in `plan`)
+    source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="manual", server_default="manual"
+    )
+    # AI prescription: {"exercises": [{name, sets, reps, weight_kg, notes}],
+    # "progression_note": str}. Null for manual workouts.
+    plan: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Session feedback loop — set when the user marks the session done.
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    difficulty: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
