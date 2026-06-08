@@ -1,19 +1,18 @@
 import axios from "axios";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "https://rajatjoshi.fit";
-
-let accessToken: string | null = null;
+const TOKEN_KEY = "fitstack_token";
 
 export function setToken(token: string): void {
-  accessToken = token;
+  sessionStorage.setItem(TOKEN_KEY, token);
 }
 
 export function clearToken(): void {
-  accessToken = null;
+  sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export function getToken(): string | null {
-  return accessToken;
+  return sessionStorage.getItem(TOKEN_KEY);
 }
 
 export const api = axios.create({
@@ -24,8 +23,9 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+  const token = getToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });

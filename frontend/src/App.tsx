@@ -9,16 +9,24 @@ import ProfilePage from "./pages/ProfilePage";
 import MetricsPage from "./pages/MetricsPage";
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
+  // Restored from sessionStorage on each render — survives page refresh within the tab.
   if (!getToken()) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;
 }
 
+function LoginRoute() {
+  if (getToken()) {
+    return <Navigate to="/" replace />;
+  }
+  return <LoginPage />;
+}
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={<LoginRoute />} />
       <Route
         path="/"
         element={
