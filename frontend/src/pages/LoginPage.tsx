@@ -89,6 +89,7 @@ export default function LoginPage() {
 
   return (
     <div className="landing-page">
+      <div className="landing-main">
       <section className="landing-hero">
         <div className="landing-hero-inner">
           <div className="landing-monogram" aria-hidden="true">
@@ -113,14 +114,16 @@ export default function LoginPage() {
             Diet plans · Supplement guidance · Progress analytics
           </p>
 
-          <button
-            type="button"
-            className="landing-scroll-cta"
-            onClick={scrollToLogin}
-          >
-            Get started
+          <div className="landing-cta-group">
+            <button
+              type="button"
+              className="landing-scroll-cta"
+              onClick={scrollToLogin}
+            >
+              Get started
+            </button>
             <span className="landing-scroll-arrow" aria-hidden="true" />
-          </button>
+          </div>
         </div>
       </section>
 
@@ -200,6 +203,7 @@ export default function LoginPage() {
           </form>
         </div>
       </section>
+      </div>
 
       <footer className="landing-footer">
         © FitStack · Built by Rajat Joshi
