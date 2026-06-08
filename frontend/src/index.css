@@ -616,3 +616,203 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 
 /* Consent box */
 .consent-text-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1rem; max-height: 180px; overflow-y: auto; color: rgba(255,255,255,0.7); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1rem; }
+
+/* Landing + login page */
+.landing-page {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.landing-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 2.5rem 16px 3rem;
+}
+
+.landing-hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 520px;
+}
+
+.landing-monogram {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 2rem;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-indent: 4px;
+}
+
+.landing-headline {
+  margin: 0 0 0.35rem;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -1px;
+  color: var(--text-primary);
+}
+
+.landing-subline {
+  margin: 0 0 1.5rem;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -1px;
+  font-style: italic;
+  color: var(--accent);
+}
+
+.landing-body {
+  margin: 0 0 2rem;
+  max-width: 340px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.landing-props {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: left;
+}
+
+.landing-props li {
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 2px solid var(--accent);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.landing-coming-soon {
+  margin: 0 0 2.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.landing-scroll-cta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.landing-scroll-cta:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.landing-scroll-arrow {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-right: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.45);
+  transform: rotate(45deg);
+  animation: landing-chevron-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes landing-chevron-bob {
+  0%,
+  100% {
+    transform: rotate(45deg) translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: rotate(45deg) translateY(5px);
+    opacity: 0.85;
+  }
+}
+
+.landing-auth-section {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 16px 3rem;
+  scroll-margin-top: 1rem;
+}
+
+.landing-auth-card {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  padding: 1.75rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.landing-auth-heading {
+  margin: 0 0 0.25rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+
+.landing-auth-card .tabs {
+  margin-top: 1.25rem;
+}
+
+.landing-footer {
+  padding: 1.5rem 16px 2rem;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+@media (min-width: 768px) {
+  .landing-hero {
+    padding: 4rem 24px 3.5rem;
+  }
+
+  .landing-headline,
+  .landing-subline {
+    font-size: 52px;
+  }
+
+  .landing-body,
+  .landing-props {
+    max-width: 420px;
+  }
+
+  .landing-props li {
+    font-size: 1rem;
+  }
+
+  .landing-auth-section {
+    padding: 3rem 24px 4rem;
+  }
+}

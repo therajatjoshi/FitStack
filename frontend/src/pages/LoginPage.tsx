@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -45,12 +45,17 @@ function getApiErrorMessage(err: unknown): string {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const loginSectionRef = useRef<HTMLElement>(null);
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function scrollToLogin() {
+    loginSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -83,81 +88,122 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="page page-auth">
-      <div className="page-inner">
-        <div className="auth-card">
-          <div className="brand">
-          <div className="brand-mark">FS</div>
-          <h1>FitStack</h1>
-          <p className="subtitle">Track workouts. Log progress.</p>
-        </div>
+    <div className="landing-page">
+      <section className="landing-hero">
+        <div className="landing-hero-inner">
+          <div className="landing-monogram" aria-hidden="true">
+            FS
+          </div>
 
-        <div className="tabs">
+          <h1 className="landing-headline">Train like I programmed it.</h1>
+          <p className="landing-subline">Because I did.</p>
+
+          <p className="landing-body">
+            FitStack is built on the same methodology behind GleamDiva — now
+            personalized to you by AI, available 24/7.
+          </p>
+
+          <ul className="landing-props">
+            <li>Real coaching methodology. Not generic AI advice.</li>
+            <li>Personalized to your body, goals, and experience.</li>
+            <li>Medical safety layer. Programming that knows your limits.</li>
+          </ul>
+
+          <p className="landing-coming-soon">
+            Diet plans · Supplement guidance · Progress analytics
+          </p>
+
           <button
             type="button"
-            className={mode === "login" ? "tab active" : "tab"}
-            onClick={() => setMode("login")}
+            className="landing-scroll-cta"
+            onClick={scrollToLogin}
           >
-            Login
-          </button>
-          <button
-            type="button"
-            className={mode === "register" ? "tab active" : "tab"}
-            onClick={() => setMode("register")}
-          >
-            Register
+            Get started
+            <span className="landing-scroll-arrow" aria-hidden="true" />
           </button>
         </div>
+      </section>
 
-        <form onSubmit={handleSubmit} className="form">
-          {mode === "register" && (
+      <section
+        ref={loginSectionRef}
+        id="login"
+        className="landing-auth-section"
+      >
+        <div className="landing-auth-card">
+          <h2 className="landing-auth-heading">
+            {mode === "login" ? "Welcome back" : "Join FitStack"}
+          </h2>
+
+          <div className="tabs">
+            <button
+              type="button"
+              className={mode === "login" ? "tab active" : "tab"}
+              onClick={() => setMode("login")}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              className={mode === "register" ? "tab active" : "tab"}
+              onClick={() => setMode("register")}
+            >
+              Register
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="form">
+            {mode === "register" && (
+              <label>
+                Name
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="Your name"
+                />
+              </label>
+            )}
+
             <label>
-              Name
+              Email
               <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="Your name"
+                placeholder="you@example.com"
               />
             </label>
-          )}
 
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="you@example.com"
-            />
-          </label>
+            <label>
+              Password
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                placeholder="Min 8 characters"
+              />
+            </label>
 
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              placeholder="Min 8 characters"
-            />
-          </label>
+            {error && <p className="error">{error}</p>}
 
-          {error && <p className="error">{error}</p>}
-
-          <button type="submit" className="btn primary" disabled={loading}>
-            {loading
-              ? "Please wait..."
-              : mode === "login"
-                ? "Login"
-                : "Register & Login"}
-          </button>
-        </form>
+            <button type="submit" className="btn primary" disabled={loading}>
+              {loading
+                ? "Please wait..."
+                : mode === "login"
+                  ? "Login"
+                  : "Register & Login"}
+            </button>
+          </form>
         </div>
-      </div>
+      </section>
+
+      <footer className="landing-footer">
+        © FitStack · Built by Rajat Joshi
+      </footer>
     </div>
   );
 }
