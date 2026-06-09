@@ -47,6 +47,12 @@ resource "azurerm_linux_web_app" "main" {
   location            = azurerm_resource_group.main.location
   service_plan_id     = azurerm_service_plan.main.id
 
+  # System-Assigned identity — used by the Key Vault references in app_settings
+  # to read secrets from `fitstack-kv`. Matches the live (out-of-band) identity.
+  identity {
+    type = "SystemAssigned"
+  }
+
   site_config {
     always_on = true
 
@@ -58,11 +64,22 @@ resource "azurerm_linux_web_app" "main" {
     }
   }
 
+  # Full set of user-defined app settings. This map is AUTHORITATIVE — Terraform
+  # removes any live setting not listed here, so keep it complete.
+  # Secrets are stored as Key Vault references (no plaintext in state/source).
+  # NOTE: DOCKER_REGISTRY_SERVER_* are managed by the provider via the
+  # application_stack Docker block above — do NOT add them here.
   app_settings = {
     APPLICATIONINSIGHTS_CONNECTION_STRING      = azurerm_application_insights.main.connection_string
     APPINSIGHTS_INSTRUMENTATIONKEY             = azurerm_application_insights.main.instrumentation_key
     ApplicationInsightsAgent_EXTENSION_VERSION = "~3"
     WEBSITES_PORT                              = "8000"
+
+    DATABASE_URL            = "@Microsoft.KeyVault(VaultName=${var.key_vault_name};SecretName=DATABASE-URL)"
+    JWT_SECRET              = "@Microsoft.KeyVault(VaultName=${var.key_vault_name};SecretName=JWT-SECRET)"
+    AZURE_OPENAI_ENDPOINT   = "@Microsoft.KeyVault(VaultName=${var.key_vault_name};SecretName=AZURE-OPENAI-ENDPOINT)"
+    AZURE_OPENAI_API_KEY    = "@Microsoft.KeyVault(VaultName=${var.key_vault_name};SecretName=AZURE-OPENAI-API-KEY)"
+    AZURE_OPENAI_DEPLOYMENT = "@Microsoft.KeyVault(VaultName=${var.key_vault_name};SecretName=AZURE-OPENAI-DEPLOYMENT)"
   }
 }
 
@@ -71,6 +88,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
   resource_group_name    = azurerm_resource_group.main.name
   location               = azurerm_resource_group.main.location
   version                = "16"
+  zone                   = "1"
   administrator_login    = var.admin_username
   administrator_password = var.admin_password
   sku_name               = "B_Standard_B1ms"

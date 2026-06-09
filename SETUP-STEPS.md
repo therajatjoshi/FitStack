@@ -840,12 +840,14 @@ mapping is captured in [`appsettings.json`](appsettings.json) (applied to the We
 | `AZURE_OPENAI_API_KEY` | `AZURE-OPENAI-API-KEY` |
 | `AZURE_OPENAI_DEPLOYMENT` | `AZURE-OPENAI-DEPLOYMENT` |
 
-> ⚠️ **Known infra drift:** the `fitstack-kv` Key Vault, its secrets, the Web App's
-> managed identity, and the `appsettings.json` application were all set up **outside Terraform**
-> — `infra/main.tf` does not define them, and `CORS_ORIGINS` / `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-> are not in `appsettings.json` either. This is why a `terraform apply` of the partial
-> `app_settings` map can wipe live settings. Bringing the Key Vault + full app settings into
-> Terraform is the open hardening item in *What's next*.
+> ✅ **App settings + identity are now in Terraform** (June 9, 2026). `infra/main.tf` carries the
+> **complete** `app_settings` map (secrets as Key Vault reference strings) plus the Web App's
+> `identity { type = "SystemAssigned" }` block, and the Postgres availability `zone = "1"` is
+> pinned. `terraform plan` reports **"No changes"** — so an `apply` reasserts all settings and can
+> no longer wipe them. The `fitstack-kv` Key Vault, its secrets, and the identity's KV-access grant
+> remain **intentionally outside Terraform** (they work; importing them wasn't worth the risk).
+> `ADMIN_EMAIL` / `ADMIN_PASSWORD` are deliberately not managed — admins are provisioned via the
+> DB script (Step 19), keeping that secret out of config.
 
 ---
 
@@ -874,7 +876,8 @@ those flows are now live.
 - [ ] Diet & supplement plans
 - [ ] Coach mode (multi-tenant)
 - [ ] Alembic migrations (currently `create_all` + idempotent `ALTER TABLE` in `app/migrations.py`)
-- [ ] Consolidate portal-only App Service settings into Terraform so `apply` is wipe-safe
+- [x] App Service settings + identity consolidated into Terraform — `apply` is wipe-safe (Step 17b)
+- [ ] Migrate Terraform state to a remote backend (currently local `infra/terraform.tfstate`)
 
 ---
 

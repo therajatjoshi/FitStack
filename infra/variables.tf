@@ -44,3 +44,9 @@ variable "postgres_database_name" {
   type        = string
   default     = "fitstack_db"
 }
+
+variable "key_vault_name" {
+  description = "Azure Key Vault holding app secrets, referenced by the Web App app settings"
+  type        = string
+  default     = "fitstack-kv"
+}
